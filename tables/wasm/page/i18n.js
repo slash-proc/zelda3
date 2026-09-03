@@ -34,7 +34,7 @@ export const SUPPORTED = [
 const en = {
   app: {
     heading: (title) => `${title} asset converter`,
-    lede: (input, output) => `Convert ${input} into ${output}`,
+    lede: (game, output) => `Convert your ${game} ROM into ${output}`,
   },
   lang: {
     label: "Language",
@@ -46,15 +46,35 @@ const en = {
   },
   why: {
     label: "What this does",
-    text: "The assets are read out of your ROM and saved as zelda3_assets.dat in the browser, never leaving your computer.",
+    text: "Runs in your browser. Your ROM never leaves your computer.",
   },
   input: {
-    heading: "Your files",
-    choose: "Choose a file, or drop one here",
+    heading: "ROM files",
+    choose: "Choose file",
+    none: "No file chosen",
     optional: "optional",
+    // Shown for a role the manifest marks repeatable, in place of its
+    // description: what the user gets for adding another one.
+    addHint: "Each adds an in-game language.",
+    addLanguage: "+ Add language",
+    remove: "Remove",
+    alreadyAdded: (name) => `${name} has already been added.`,
+    languageAlreadyAdded: (variant) => `${variant} is already added.`,
+    wrongRole: (name, other, role) =>
+      `${name} is the file for "${other}", not for "${role}".`,
+    // Refusals. Each one names the file, says what was wanted, and gives the
+    // hash the file actually has, so someone with a folder of ROMs can work
+    // out which one they are holding.
+    notTheOne: (name, variant, expected, actual) =>
+      `Needs ${variant}. SHA-1 ${expected}, yours ${actual}.`,
+    notRecognised: (name, role, actual) =>
+      `Not a supported release. SHA-1 ${actual}. See "?" for the list.`,
+    help: "What this is",
+    accepted: "Available:",
+    showHashes: "Accepted hashes",
     reading: (name) => `Reading ${name}…`,
     tooLarge: (name) => `${name} is too big to be the right file.`,
-    recognised: (name, variant) => `${name}: ${variant}.`,
+    recognised: (name, variant) => variant,
     unrecognised: (name, role) =>
       `${name} is not a stock ${role}. Treating it as a modified copy.`,
     missingRequired: "Choose the required file to continue.",
@@ -79,8 +99,7 @@ const en = {
   footer: {
     source: "Source and documentation:",
     repo: "the project repository",
-    published:
-      "This page comes from the same CI run that builds and checks the converter, so the two always match.",
+    published: "",
   },
   fatal: {
     cannotRun: (msg) => `This page cannot run: ${msg}`,
@@ -93,7 +112,7 @@ const en = {
 const fr = {
   app: {
     heading: (title) => `Convertisseur de ressources ${title}`,
-    lede: (input, output) => `Convertir ${input} en ${output}`,
+    lede: (game, output) => `Convertissez votre ROM ${game} en ${output}`,
   },
   lang: {
     label: "Langue",
@@ -105,15 +124,30 @@ const fr = {
   },
   why: {
     label: "Ce que fait cette page",
-    text: "Les ressources nécessaires sont extraites et enregistrées dans zelda3_assets.dat directement dans le navigateur. Rien ne quitte votre ordinateur.",
+    text: "Tout se passe dans votre navigateur. Votre ROM ne quitte pas votre ordinateur.",
   },
   input: {
-    heading: "Vos fichiers",
-    choose: "Choisissez un fichier, ou déposez-le ici",
+    heading: "Fichiers ROM",
+    choose: "Choisir un fichier",
+    none: "Aucun fichier choisi",
     optional: "facultatif",
+    addHint: "Chacune ajoute une langue dans le jeu.",
+    addLanguage: "+ Ajouter une langue",
+    remove: "Retirer",
+    alreadyAdded: (name) => `${name} a déjà été ajouté.`,
+    languageAlreadyAdded: (variant) => `${variant} est déjà ajouté.`,
+    wrongRole: (name, other, role) =>
+      `${name} correspond à « ${other} », pas à « ${role} ».`,
+    notTheOne: (name, variant, expected, actual) =>
+      `Il faut ${variant}. SHA-1 ${expected}, le vôtre ${actual}.`,
+    notRecognised: (name, role, actual) =>
+      `Version non prise en charge. SHA-1 ${actual}. Voir « ? » pour la liste.`,
+    help: "Ce que c'est",
+    accepted: "Disponibles :",
+    showHashes: "Empreintes acceptées",
     reading: (name) => `Lecture de ${name}…`,
     tooLarge: (name) => `${name} est trop volumineux pour être le bon fichier.`,
-    recognised: (name, variant) => `${name} : ${variant}.`,
+    recognised: (name, variant) => variant,
     unrecognised: (name, role) =>
       `${name} n'est pas un ${role} d'origine. Il sera traité comme une copie modifiée.`,
     missingRequired: "Choisissez le fichier requis pour continuer.",
@@ -138,8 +172,7 @@ const fr = {
   footer: {
     source: "Code source et documentation :",
     repo: "le dépôt du projet",
-    published:
-      "Cette page provient de la même exécution CI qui compile et vérifie le convertisseur. Les deux correspondent donc toujours.",
+    published: "",
   },
   fatal: {
     cannotRun: (msg) => `Cette page ne peut pas fonctionner : ${msg}`,
@@ -152,7 +185,7 @@ const fr = {
 const de = {
   app: {
     heading: (title) => `${title} Asset-Konverter`,
-    lede: (input, output) => `${input} in ${output} umwandeln`,
+    lede: (game, output) => `Wandle dein ${game} ROM in ${output} um`,
   },
   lang: {
     label: "Sprache",
@@ -164,15 +197,30 @@ const de = {
   },
   why: {
     label: "Was hier passiert",
-    text: "Die benötigten Assets werden direkt im Browser ausgelesen und in zelda3_assets.dat gespeichert. Nichts wird hochgeladen, alles bleibt auf deinem Rechner.",
+    text: "Läuft im Browser. Dein ROM bleibt auf deinem Rechner.",
   },
   input: {
-    heading: "Deine Dateien",
-    choose: "Datei auswählen oder hierher ziehen",
+    heading: "ROM-Dateien",
+    choose: "Datei auswählen",
+    none: "Keine Datei ausgewählt",
     optional: "optional",
+    addHint: "Jedes ergibt eine Sprache im Spiel.",
+    addLanguage: "+ Sprache hinzufügen",
+    remove: "Entfernen",
+    alreadyAdded: (name) => `${name} wurde schon hinzugefügt.`,
+    languageAlreadyAdded: (variant) => `${variant} ist schon dabei.`,
+    wrongRole: (name, other, role) =>
+      `${name} gehört zu „${other}“ und nicht zu „${role}“.`,
+    notTheOne: (name, variant, expected, actual) =>
+      `Gebraucht wird ${variant}. SHA-1 ${expected}, deins ${actual}.`,
+    notRecognised: (name, role, actual) =>
+      `Keine unterstützte Version. SHA-1 ${actual}. Liste im „?“.`,
+    help: "Was das ist",
+    accepted: "Verfügbar:",
+    showHashes: "Akzeptierte Prüfsummen",
     reading: (name) => `${name} wird gelesen…`,
     tooLarge: (name) => `${name} ist zu groß für die erwartete Datei.`,
-    recognised: (name, variant) => `${name}: ${variant}.`,
+    recognised: (name, variant) => variant,
     unrecognised: (name, role) =>
       `${name} ist kein unverändertes ${role}. Es wird als bearbeitete Fassung behandelt.`,
     missingRequired: "Wähle die benötigte Datei aus, um weiterzumachen.",
@@ -197,8 +245,7 @@ const de = {
   footer: {
     source: "Quellcode und Dokumentation:",
     repo: "das Projekt-Repository",
-    published:
-      "Diese Seite stammt aus demselben CI-Lauf, der den Konverter baut und prüft. Beides passt also immer zusammen.",
+    published: "",
   },
   fatal: {
     cannotRun: (msg) => `Diese Seite funktioniert nicht: ${msg}`,

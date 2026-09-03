@@ -20,8 +20,10 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_MANIFEST = "manifest.json";
 const RUN_TIMEOUT_MS = 120_000;
 
-// `files` holds one entry per input role, keyed by role id:
-// { bytes, sha1, name, variant }. A role the user has not filled is absent.
+// `files` holds the accepted entries for each input role, keyed by role id.
+// The value is always an array of { bytes, sha1, name, variant }: a role the
+// manifest marks repeatable can hold several files, any other role holds at
+// most one. A role the user has not filled is absent.
 const state = { wasmBytes: null, tool: null, manifest: null, files: new Map(), lastResults: null };
 
 const setStatus = (el, cls, text) => {
@@ -39,6 +41,10 @@ async function digest(algo, bytes) {
 
 const roles = () => state.tool?.inputs ?? [];
 const requiredRoles = () => roles().filter((r) => r.required);
+const filesFor = (roleId) => state.files.get(roleId) ?? [];
+// Manifest order, flattened. The module identifies each file by content, so
+// this order is a convenience for the reader, not a contract.
+const allFiles = () => roles().flatMap((r) => filesFor(r.id));
 
 // --- load and verify the module -------------------------------------------
 //
@@ -147,7 +153,7 @@ async function loadModule() {
     const fatal = $("fatal");
     fatal.hidden = false;
     fatal.textContent = t().fatal.cannotRun(e.message ?? e);
-    document.querySelectorAll(".drop").forEach((d) => d.classList.add("disabled"));
+    document.querySelectorAll(".role").forEach((d) => d.classList.add("disabled"));
   }
 }
 
@@ -162,12 +168,15 @@ function renderLocalised() {
   if (!tool) return;
 
   const title = localeText(tool.title) || state.manifest?.title || "";
-  $("title").textContent = t().app.heading(state.manifest?.title ?? title);
+  const shortTitle = state.manifest?.shortTitle ?? state.manifest?.title ?? title;
+  $("title").textContent = t().app.heading(shortTitle);
   document.title = $("title").textContent;
 
   const outNames = tool.outputs.map((o) => o.filename).join(", ");
   const primary = requiredRoles()[0] ?? roles()[0];
-  $("lede-text").textContent = t().app.lede(localeText(primary?.label), outNames);
+  // Name the game, not the input role: "Base ROM" is a slot in this page's own
+  // vocabulary and means nothing to someone who just wants to convert a game.
+  $("lede-text").textContent = t().app.lede(shortTitle, outNames);
 
   // A single-role project reads better with the role's own name as the section
   // heading ("Your ROM") than with a generic plural.
@@ -184,12 +193,12 @@ function renderLocalised() {
     if (roleLabel) roleLabel.textContent = localeText(role.label);
     const opt = box.querySelector(".role-optional");
     if (opt) opt.textContent = t().input.optional;
+    // A repeatable role explains itself in terms of what adding another file
+    // buys the user, which is the one thing the manifest cannot say for them.
     const desc = box.querySelector(".role-desc");
-    if (desc) desc.textContent = localeText(role.description);
-    const prompt = box.querySelector(".drop-prompt");
-    const got = state.files.get(role.id);
-    prompt.textContent = got ? got.name : t().input.choose;
-    if (got) renderFileStatus(role, got);
+    if (desc) desc.textContent = t().input.addHint ?? localeText(role.description);
+    renderRoleHelp(role);
+    renderRole(role);
   }
 
   // Re-render results in the new language rather than leaving stale text.
@@ -197,7 +206,7 @@ function renderLocalised() {
 }
 
 function renderIoInput() {
-  const chosen = roles().map((r) => state.files.get(r.id)).filter(Boolean);
+  const chosen = allFiles();
   const mark = $("io-in-mark");
   if (chosen.length === 0) {
     const primary = requiredRoles()[0] ?? roles()[0];
@@ -208,7 +217,23 @@ function renderIoInput() {
     mark.className = "mark";
     return;
   }
-  $("io-in").textContent = chosen.map((c) => c.name).join(", ");
+  // Summarise what was supplied rather than echoing file names. The names are
+  // already shown against the control that took them, and three long cartridge
+  // dumps wrap this box onto several lines for no benefit. Say what the module
+  // is being given: the required file, then how many extras and which.
+  const parts = [];
+  for (const role of roles()) {
+    const files = filesFor(role.id);
+    if (files.length === 0) continue;
+    if (role.repeatable) {
+      // Name the variants, since which languages went in is the useful fact.
+      const named = files.map((f) => localeText(f.variant?.label) || f.name);
+      parts.push(named.join(", "));
+    } else {
+      parts.push(localeText(role.label));
+    }
+  }
+  $("io-in").textContent = parts.join(" + ");
   // One mark for the whole input: everything recognised, or something not.
   const allKnown = chosen.every((c) => c.variant);
   mark.textContent = allKnown ? "✓" : "!";
@@ -216,6 +241,11 @@ function renderIoInput() {
 }
 
 // --- 1. the inputs ---------------------------------------------------------
+//
+// No landing pads. Each role gets an ordinary button next to the name of what
+// was chosen, at the same weight as any other control on the page. Dropping a
+// file on a role still works; it just does not advertise itself with a
+// permanent dashed box, and shows a cue only while something is over it.
 
 function buildRoleInputs() {
   const host = $("roles");
@@ -241,26 +271,64 @@ function buildRoleInputs() {
         opt.className = "role-optional";
         head.append(opt);
       }
+      // The same disclosure as the one beside the lede, for the same reason: a
+      // title attribute is invisible on a touch screen, and the detail here is
+      // long enough that it does not belong on the page at rest.
+      const why = document.createElement("button");
+      why.type = "button";
+      why.className = "why";
+      why.textContent = "?";
+      why.setAttribute("aria-expanded", "false");
+      head.append(why);
       box.append(head);
+
+      if (role.repeatable) {
+        // The one line that stays on the page: what adding another file buys
+        // the user. Everything longer lives behind the "?".
+        const desc = document.createElement("p");
+        desc.className = "role-desc";
+        box.append(desc);
+      }
+
+      const help = document.createElement("div");
+      help.className = "why-text role-help";
+      help.hidden = true;
+      box.append(help);
+      why.addEventListener("click", () => {
+        help.hidden = !help.hidden;
+        why.setAttribute("aria-expanded", String(!help.hidden));
+      });
     }
 
-    if (role.description && showHeads) {
-      const desc = document.createElement("p");
-      desc.className = "role-desc";
-      box.append(desc);
-    }
-
-    const drop = document.createElement("label");
-    drop.className = "drop";
-    drop.htmlFor = `file-${role.id}`;
     const input = document.createElement("input");
     input.type = "file";
-    input.id = `file-${role.id}`;
+    input.className = "file-input";
     if (role.extensions?.length) input.accept = role.extensions.join(",");
-    const prompt = document.createElement("span");
-    prompt.className = "drop-prompt";
-    drop.append(input, prompt);
-    box.append(drop);
+
+    if (role.repeatable) {
+      // Several files at once is the normal case here, so the picker offers
+      // it rather than making the user come back for each one.
+      input.multiple = true;
+      const list = document.createElement("ul");
+      list.className = "file-list";
+      list.hidden = true;
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "add-more";
+      box.append(list, add, input);
+      add.addEventListener("click", () => input.click());
+    } else {
+      const row = document.createElement("div");
+      row.className = "file-row";
+      const choose = document.createElement("button");
+      choose.type = "button";
+      choose.className = "choose";
+      const name = document.createElement("span");
+      name.className = "file-name empty";
+      row.append(choose, input, name);
+      box.append(row);
+      choose.addEventListener("click", () => input.click());
+    }
 
     const status = document.createElement("div");
     status.className = "status";
@@ -270,15 +338,163 @@ function buildRoleInputs() {
 
     host.append(box);
 
-    input.addEventListener("change", (e) => acceptFile(role, e.target.files[0]));
+    input.addEventListener("change", (e) => {
+      const picked = [...e.target.files];
+      // Clearing the control means picking the same file twice in a row still
+      // fires a change event, which matters for a role you can re-fill.
+      e.target.value = "";
+      acceptFiles(role, picked);
+    });
+
     for (const ev of ["dragenter", "dragover"]) {
-      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); });
+      box.addEventListener(ev, (e) => { e.preventDefault(); box.classList.add("over"); });
     }
-    for (const ev of ["dragleave", "drop"]) {
-      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); });
-    }
-    drop.addEventListener("drop", (e) => acceptFile(role, e.dataTransfer.files[0]));
+    box.addEventListener("dragleave", (e) => {
+      // Moving between children of the box is not leaving it.
+      if (!box.contains(e.relatedTarget)) box.classList.remove("over");
+    });
+    box.addEventListener("drop", (e) => {
+      e.preventDefault();
+      box.classList.remove("over");
+      acceptFiles(role, [...e.dataTransfer.files]);
+    });
   }
+}
+
+/**
+ * The languages a repeatable role accepts, by name, in the page's language.
+ * Derived from the variants' language codes rather than written out, so a
+ * manifest that gains a translation gains a name here for free. A code the
+ * browser does not know (this manifest carries "redux", which is a script and
+ * not a language) falls back to the variant's own label.
+ */
+function acceptedLanguages(role) {
+  let names;
+  try {
+    names = new Intl.DisplayNames([locale()], { type: "language" });
+  } catch { names = null; }
+  const out = [];
+  for (const v of role.variants ?? []) {
+    // Region and edition are noise in a list of languages: "fr" and "fr-c"
+    // are both French, and saying so twice helps nobody.
+    const base = String(v.language ?? "").split("-")[0];
+    // A variant whose code is not a language at all (this manifest carries
+    // "redux", which is a script for a language already in the list) has
+    // nothing to add here. It is still named in the hashes below.
+    let name = null;
+    try {
+      const got = names?.of(base);
+      if (got && got !== base) name = got;
+    } catch { /* not a language tag: nothing to name */ }
+    if (name && !out.includes(name)) out.push(name);
+  }
+  return out;
+}
+
+/**
+ * Fills a role's "?" panel: what the role is, and for a repeatable role which
+ * releases it takes. Names first. The hashes sit behind a further disclosure,
+ * because a hash is only ever useful to someone holding a file they want to
+ * identify, and useless decoration to everyone else.
+ */
+function renderRoleHelp(role) {
+  const box = document.getElementById(`role-${role.id}`);
+  const help = box?.querySelector(".role-help");
+  if (!help) return;
+  const s = t().input;
+
+  const why = box.querySelector(".role-head .why");
+  if (why) {
+    why.title = s.help ?? "";
+    why.setAttribute("aria-label", `${s.help ?? ""}: ${localeText(role.label)}`);
+  }
+
+  help.replaceChildren();
+  // A repeatable role already shows its one-line hint on the page, so
+  // restating the description here is the same fact twice.
+  if (!role.repeatable) {
+    const about = document.createElement("p");
+    about.className = "help-line";
+    about.textContent = localeText(role.description);
+    help.append(about);
+  }
+
+  if (role.repeatable) {
+    const langs = acceptedLanguages(role);
+    if (langs.length) {
+      const line = document.createElement("p");
+      line.className = "help-line";
+      line.textContent = `${s.accepted ?? ""} ${langs.join(", ")}.`;
+      help.append(line);
+    }
+  }
+
+  const variants = role.variants ?? [];
+  if (variants.length === 1) {
+    // One accepted release: the hash is short enough to just show. Wrapping a
+    // single value in a "reveal" is ceremony, not restraint.
+    const line = document.createElement("p");
+    line.className = "help-line";
+    const code = document.createElement("code");
+    code.textContent = variants[0].sha1;
+    line.append("SHA-1 ", code);
+    help.append(line);
+  } else if (variants.length) {
+    const det = document.createElement("details");
+    const sum = document.createElement("summary");
+    sum.textContent = s.showHashes ?? "";
+    const list = document.createElement("ul");
+    list.className = "hash-list";
+    for (const v of variants) {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = localeText(v.label);
+      const code = document.createElement("code");
+      code.textContent = v.sha1;
+      li.append(name, code);
+      list.append(li);
+    }
+    det.append(sum, list);
+    help.append(det);
+  }
+}
+
+/** Redraws one role's list, chosen-file name and control labels. */
+function renderRole(role) {
+  const box = document.getElementById(`role-${role.id}`);
+  if (!box) return;
+  const got = filesFor(role.id);
+
+  if (role.repeatable) {
+    const list = box.querySelector(".file-list");
+    list.replaceChildren();
+    for (const f of got) {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      name.className = "file-name";
+      name.textContent = f.name;
+      const variant = document.createElement("span");
+      variant.className = "file-variant";
+      variant.textContent = f.variant ? localeText(f.variant.label) : "";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove";
+      remove.textContent = t().input.remove ?? "Remove";
+      remove.addEventListener("click", () => removeFile(role, f));
+      li.append(name, variant, remove);
+      list.append(li);
+    }
+    list.hidden = got.length === 0;
+    box.querySelector(".add-more").textContent =
+      t().input.addLanguage ?? t().input.choose;
+    return;
+  }
+
+  const name = box.querySelector(".file-name");
+  name.textContent = got[0] ? got[0].name : (t().input.none ?? "");
+  name.classList.toggle("empty", !got[0]);
+  box.querySelector(".choose").textContent = t().input.choose;
+  if (got[0]) renderFileStatus(role, got[0]);
 }
 
 function renderFileStatus(role, got) {
@@ -294,38 +510,110 @@ function renderFileStatus(role, got) {
   }
 }
 
-async function acceptFile(role, file) {
+/**
+ * Why a file cannot fill this role, or null if it can. These are decisions,
+ * not settings: every one of them has a single right answer, so the page makes
+ * it and says what it did rather than offering a control.
+ *
+ * Whether an unrecognised file is refused at all is the manifest's call, via
+ * the role's `acceptsModified`. A project whose users routinely supply hacked
+ * ROMs sets it and gets a note instead of a refusal; a project that reads
+ * fixed addresses out of one specific release clears it, and a file that
+ * hashes to something else is simply the wrong file.
+ */
+function refusalFor(role, got) {
+  const s = t().input;
+  const existing = filesFor(role.id);
+  if (role.repeatable && existing.some((f) => f.sha1 === got.sha1)) {
+    return (s.alreadyAdded ?? ((n) => `${n} has already been added.`))(got.name);
+  }
+  // The same file is meaningful in another role, so name that role rather than
+  // calling a perfectly good ROM unrecognised.
+  const other = roles().find(
+    (r) => r.id !== role.id && (r.variants ?? []).some((v) => v.sha1 === got.sha1));
+  if (other) {
+    return (s.wrongRole ?? ((n, o, r) => `${n} is the ${o}, not the ${r}.`))(
+      got.name, localeText(other.label), localeText(role.label));
+  }
+  if (!got.variant && role.acceptsModified === false) {
+    const variants = role.variants ?? [];
+    // With one acceptable file, name it and its hash outright. With a dozen,
+    // the list belongs behind the "?" and the message points at it; either
+    // way the user is told what their own file hashed to, which is the part
+    // that tells them what they are actually holding.
+    if (variants.length === 1) {
+      return (s.notTheOne ?? ((n, v, e, a) => `${n} is not ${v} (${e}); it hashes to ${a}.`))(
+        got.name, localeText(variants[0].label), variants[0].sha1, got.sha1);
+    }
+    return (s.notRecognised ?? ((n, r, a) => `${n} is not a supported ${r}; it hashes to ${a}.`))(
+      got.name, localeText(role.label), got.sha1);
+  }
+  // The module refuses a second file for a language it already has, so refuse
+  // it up front and say so rather than spending a run to find out.
+  const dup = role.repeatable && got.variant?.language
+    && existing.some((f) => f.variant?.language === got.variant.language);
+  if (dup) {
+    return (s.languageAlreadyAdded ?? ((v) => `${v} has already been added.`))(
+      localeText(got.variant.label));
+  }
+  return null;
+}
+
+function removeFile(role, got) {
+  const left = filesFor(role.id).filter((f) => f !== got);
+  if (left.length) state.files.set(role.id, left);
+  else state.files.delete(role.id);
   const status = document.getElementById(`status-${role.id}`);
-  state.files.delete(role.id);
+  if (status) status.hidden = true;
+  renderRole(role);
+  renderIoInput();
   updateGo();
+}
 
-  if (!file) {
+async function acceptFiles(role, files) {
+  const status = document.getElementById(`status-${role.id}`);
+  if (!files.length) return;
+
+  for (const file of files) {
+    if (role.maxBytes && file.size > role.maxBytes) {
+      setStatus(status, "bad", t().input.tooLarge(file.name));
+      continue;
+    }
+
+    setStatus(status, "busy", t().input.reading(file.name));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const sha1 = (await digest("SHA-1", bytes)).toUpperCase();
+    const variant = (role.variants ?? []).find((v) => v.sha1 === sha1) ?? null;
+    const got = { bytes, sha1, name: file.name, variant };
+
+    const refusal = refusalFor(role, got);
+    if (refusal) {
+      // A refused file is not held on to: nothing is stored, so the Convert
+      // button stays where it was and the page cannot be talked into running
+      // on a file it just said no to.
+      setStatus(status, "warn", refusal);
+      continue;
+    }
+
+    if (!role.repeatable) {
+      // One file, replacing whatever was there.
+      state.files.set(role.id, [got]);
+      renderFileStatus(role, got);
+      continue;
+    }
+    state.files.set(role.id, [...filesFor(role.id), got]);
+    // The list itself now says what was added, so the status line has nothing
+    // left to report.
     status.hidden = true;
-    renderLocalised();
-    return;
-  }
-  if (role.maxBytes && file.size > role.maxBytes) {
-    setStatus(status, "bad", t().input.tooLarge(file.name));
-    renderIoInput();
-    return;
   }
 
-  setStatus(status, "busy", t().input.reading(file.name));
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const sha1 = (await digest("SHA-1", bytes)).toUpperCase();
-  const variant = (role.variants ?? []).find((v) => v.sha1 === sha1) ?? null;
-
-  const got = { bytes, sha1, name: file.name, variant };
-  state.files.set(role.id, got);
-
-  document.querySelector(`#role-${role.id} .drop-prompt`).textContent = file.name;
-  renderFileStatus(role, got);
+  renderRole(role);
   renderIoInput();
   updateGo();
 }
 
 function updateGo() {
-  const ready = requiredRoles().every((r) => state.files.has(r.id));
+  const ready = requiredRoles().every((r) => filesFor(r.id).length > 0);
   $("go").disabled = !ready;
 }
 
@@ -356,8 +644,12 @@ async function run() {
 
   // Registration order follows the manifest's role order, but the module
   // identifies each file by content, so the order is a convenience only.
-  const ordered = roles().map((r) => state.files.get(r.id)).filter(Boolean);
-  const anyUnrecognised = ordered.some((f) => !f.variant);
+  const ordered = allFiles();
+  // Only a role that says it accepts modified files can ask for the hash check
+  // to be skipped. Everywhere else an unrecognised file was refused at the
+  // picker, so there is nothing to relax and the flag stays off.
+  const anyUnrecognised = roles().some(
+    (r) => r.acceptsModified !== false && filesFor(r.id).some((f) => !f.variant));
 
   const worker = new Worker("worker.js", { type: "module" });
   // The ABI has no cancel flag, so this is what a timeout means: stop the
@@ -470,7 +762,7 @@ function matchesReferenceInput(reference) {
   // Spec 1 references record either a single `input` or a list of `inputs`.
   const want = reference.inputs ?? (reference.input ? [reference.input] : []);
   if (want.length === 0) return false;
-  const got = [...state.files.values()].map((f) => f.sha1).sort();
+  const got = allFiles().map((f) => f.sha1).sort();
   const expect = want.map((i) => i.sha1).sort();
   return got.length === expect.length && got.every((h, i) => h === expect[i]);
 }

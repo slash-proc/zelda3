@@ -46,6 +46,9 @@ const manifest = {
   spec: 1,
   project: "zelda3",
   title: "The Legend of Zelda: A Link to the Past",
+  // What to call the game where a full cartridge title would wrap or crowd a
+  // control. The long title stays authoritative; this is presentation.
+  shortTitle: "Zelda 3",
   source: {
     repo: env.GITHUB_REPOSITORY ?? null,
     commit: env.GITHUB_SHA ?? null,
@@ -107,14 +110,14 @@ const manifest = {
           required: true,
           repeatable: false,
           label: loc(
-            "Zelda 3 ROM",
-            "ROM de Zelda 3",
-            "Zelda 3 ROM",
+            "Base ROM",
+            "ROM de base",
+            "Basis-ROM",
           ),
           description: loc(
-            "The original US cartridge ROM. Everything except the dialogue comes from this file.",
-            "La ROM originale de la cartouche US. Tout sauf les dialogues provient de ce fichier.",
-            "Das ROM der originalen US Fassung. Alles außer den Dialogen stammt aus dieser Datei.",
+            "US (NTSC) cartridge dump.",
+            "Copie de la cartouche US (NTSC).",
+            "Kopie der US Fassung (NTSC).",
           ),
           extensions: [".sfc", ".smc"],
           maxBytes: 8 * 1024 * 1024,
@@ -123,31 +126,34 @@ const manifest = {
               id: "us",
               language: "us",
               label: loc(
-                "The Legend of Zelda: A Link to the Past (USA)",
-                "The Legend of Zelda: A Link to the Past (USA)",
-                "The Legend of Zelda: A Link to the Past (USA)",
+                "The Legend of Zelda: A Link to the Past (USA, NTSC)",
+                "The Legend of Zelda: A Link to the Past (USA, NTSC)",
+                "The Legend of Zelda: A Link to the Past (USA, NTSC)",
               ),
               sha1: "6D4F10A8B10E10DBE624CB23CF03B88BB8252973",
               bytes: 1048576,
             },
           ],
-          // A modified base ROM is accepted only with noHashCheck set: by
-          // construction it matches no known hash.
-          acceptsModified: true,
+          // Unlike a project whose whole point is running modified ROMs, there
+          // is no legitimate Zelda 3 base ROM that fails this hash: the port
+          // reads fixed addresses out of the US release, so anything else is
+          // the wrong file and the module rejects it. Saying so at the picker
+          // is kinder than saying it after a failed run.
+          acceptsModified: false,
         },
         {
           id: "language",
           required: false,
           repeatable: true,
           label: loc(
-            "Translated ROM",
-            "ROM traduite",
-            "Übersetztes ROM",
+            "Additional Language",
+            "Langue supplémentaire",
+            "Zusätzliche Sprache",
           ),
           description: loc(
-            "Optional. Add one ROM per extra language you want in the output. The dialogue is read from it; everything else still comes from the US ROM.",
-            "Facultatif. Ajoutez une ROM par langue supplémentaire souhaitée. Les dialogues en sont extraits, le reste provient toujours de la ROM US.",
-            "Optional. Füge pro zusätzlicher Sprache ein ROM hinzu. Die Dialoge stammen daraus, alles andere weiterhin aus dem US ROM.",
+            "Supplies that language's dialogue and font.",
+            "Fournit les dialogues et la police de cette langue.",
+            "Liefert Dialoge und Schrift dieser Sprache.",
           ),
           extensions: [".sfc", ".smc"],
           maxBytes: 8 * 1024 * 1024,
@@ -159,34 +165,32 @@ const manifest = {
             {
               id: "de",
               language: "de",
-              label: loc("German release", "Version allemande", "Deutsche Fassung"),
+              label: loc("German", "Allemand", "Deutsch"),
               sha1: "2E62494967FB0AFDF5DA1635607F9641DF7C6559",
             },
             {
               id: "fr",
               language: "fr",
-              label: loc("French release", "Version française", "Französische Fassung"),
+              label: loc("French", "Français", "Französisch"),
               sha1: "229364A1B92A05167CD38609B1AA98F7041987CC",
             },
             {
               id: "fr-c",
               language: "fr-c",
-              label: loc("French Canadian release", "Version canadienne française", "Französische Fassung aus Kanada"),
+              label: loc("French (Canada)", "Français (Canada)", "Französisch (Kanada)"),
               sha1: "C1C6C7F76FFF936C534FF11F87A54162FC0AA100",
             },
             {
               id: "en",
               language: "en",
-              label: loc("European English release", "Version anglaise européenne", "Englische Fassung aus Europa"),
+              label: loc("English (Europe)", "Anglais (Europe)", "Englisch (Europa)"),
               sha1: "7C073A222569B9B8E8CA5FCB5DFEC3B5E31DA895",
             },
             {
               id: "es",
               language: "es",
               label: loc(
-                "Spanish fan translation",
-                "Traduction espagnole amateur",
-                "Spanische Übersetzung von Fans",
+                "Spanish (fan)", "Espagnol (fan)", "Spanisch (Fan)",
               ),
               url: "https://www.romhacking.net/translations/2195/",
               sha1: "461FCBD700D1332009C0E85A7A136E2A8E4B111E",
@@ -195,9 +199,7 @@ const manifest = {
               id: "pl",
               language: "pl",
               label: loc(
-                "Polish fan translation",
-                "Traduction polonaise amateur",
-                "Polnische Übersetzung von Fans",
+                "Polish (fan)", "Polonais (fan)", "Polnisch (Fan)",
               ),
               url: "https://www.romhacking.net/translations/5760/",
               sha1: "3C4D605EEFDA1D76F101965138F238476655B11D",
@@ -206,9 +208,7 @@ const manifest = {
               id: "pt",
               language: "pt",
               label: loc(
-                "Portuguese fan translation",
-                "Traduction portugaise amateur",
-                "Portugiesische Übersetzung von Fans",
+                "Portuguese (fan)", "Portugais (fan)", "Portugiesisch (Fan)",
               ),
               url: "https://www.romhacking.net/translations/6530/",
               sha1: "D0D09ED41F9C373FE6AFDCCAFBF0DA8C88D3D90D",
@@ -217,9 +217,7 @@ const manifest = {
               id: "redux-translation",
               language: "redux",
               label: loc(
-                "English Redux script",
-                "Script anglais Redux",
-                "Englische Fassung Redux",
+                "English (Redux)", "Anglais (Redux)", "Englisch (Redux)",
               ),
               url: "https://www.romhacking.net/translations/6657/",
               sha1: "B2A07A59E64C498BC1B2F28728F9BF4014C8D582",
@@ -228,9 +226,7 @@ const manifest = {
               id: "redux-hack",
               language: "redux",
               label: loc(
-                "English Redux script, hack release",
-                "Script anglais Redux, version hack",
-                "Englische Fassung Redux, als Hack veröffentlicht",
+                "English (Redux, hack)", "Anglais (Redux, hack)", "Englisch (Redux, Hack)",
               ),
               url: "https://www.romhacking.net/hacks/2594/",
               sha1: "9325C22EB0A2A1F0017157C8B620BC3A605CEDE1",
@@ -239,9 +235,7 @@ const manifest = {
               id: "nl",
               language: "nl",
               label: loc(
-                "Dutch fan translation",
-                "Traduction néerlandaise amateur",
-                "Niederländische Übersetzung von Fans",
+                "Dutch (fan)", "Néerlandais (fan)", "Niederländisch (Fan)",
               ),
               url: "https://www.romhacking.net/translations/1124/",
               sha1: "FA8ADFDBA2697C9A54D583A1284A22AC764C7637",
@@ -250,9 +244,7 @@ const manifest = {
               id: "sv",
               language: "sv",
               label: loc(
-                "Swedish fan translation",
-                "Traduction suédoise amateur",
-                "Schwedische Übersetzung von Fans",
+                "Swedish (fan)", "Suédois (fan)", "Schwedisch (Fan)",
               ),
               url: "https://www.romhacking.net/translations/982/",
               sha1: "43CD3438469B2C3FE879EA2F410B3EF3CB3F1CA4",

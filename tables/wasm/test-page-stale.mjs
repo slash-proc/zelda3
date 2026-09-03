@@ -59,7 +59,7 @@ try {
   await page.waitForSelector("#about:not([hidden])", { timeout: 15000 });
   check("page recovers from a stale published module", true);
   check("no fatal error is shown", await page.isHidden("#fatal"));
-  check("the file picker is usable", (await page.locator("#roles input[type=file]").count()) > 0);
+  check("the file picker is usable", (await page.locator("#roles .choose").count()) > 0);
   check("no uncaught errors", errors.length === 0, `-> ${JSON.stringify(errors)}`);
 } catch (e) {
   check("page recovers from a stale published module", false, `-> ${e.message}`);

@@ -44,9 +44,11 @@
 
   <section id="input">
     <h2><span class="step">1.</span> <span id="input-heading">Your files</span></h2>
-    <!-- One drop target per input role declared by the manifest. A project
-         that takes a single file therefore renders exactly as it did before
-         roles existed. -->
+    <!-- One block per input role declared by the manifest: a plain button and
+         the name of what was chosen, plus a list and an add control for a role
+         the manifest marks repeatable. Dropping a file on a block works too,
+         quietly. A project that takes a single file therefore renders as a
+         single button. -->
     <div id="roles"></div>
   </section>
 
