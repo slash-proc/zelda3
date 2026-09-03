@@ -169,14 +169,15 @@ static void MsuPlayer_CloseFile(MsuPlayer *mp) {
 }
 
 static void MsuPlayer_Open(MsuPlayer *mp, int orig_track, bool resume_from_snapshot) {
-  /*MsuPlayerResumeInfo resume;
+#if 0
+  MsuPlayerResumeInfo resume;
   int actual_track = RemapMsuDeluxeTrack(mp, orig_track);
 
   if (!resume_from_snapshot) {
     resume.tag = 0;
     // Attempt to resume MSU playback when exiting back to the overworld.
     if (main_module_index == 9 &&
-        actual_track == ((MsuPlayerResumeInfo *)msu_resume_info_alt)->actual_track/* && g_config.resume_msu*//*) {
+        actual_track == ((MsuPlayerResumeInfo *)msu_resume_info_alt)->actual_track /* && g_config.resume_msu*/) {
       memcpy(&resume, msu_resume_info_alt, sizeof(mp->resume_info));
     }
     if (mp->state >= kMsuState_Resuming)
@@ -193,7 +194,7 @@ static void MsuPlayer_Open(MsuPlayer *mp, int orig_track, bool resume_from_snaps
   if (actual_track == 0)
     return;
   char fname[256], buf[8];
-  snprintf(fname, sizeof(fname), "%s%d.%s", /*g_config.msu_path ? g_config.msu_path :*//* "", actual_track, mp->enabled & kMsuEnabled_Opuz ? "opuz" : "pcm");
+  snprintf(fname, sizeof(fname), "%s%d.%s", /*g_config.msu_path ? g_config.msu_path :*/ "", actual_track, mp->enabled & kMsuEnabled_Opuz ? "opuz" : "pcm");
   printf("Loading MSU %s\n", fname);
   mp->f = fopen(fname, "rb");
   if (mp->f == NULL)
@@ -234,7 +235,8 @@ static void MsuPlayer_Open(MsuPlayer *mp, int orig_track, bool resume_from_snaps
     fseek(mp->f, mp->cur_file_offs * 4 + 8, SEEK_SET);
   } else {
     goto READ_ERROR;
-  }*/
+  }
+#endif
 }
 
 static void MixToBufferWithVolume(int16 *dst, const int16 *src, size_t n, float volume) {
@@ -518,15 +520,17 @@ void ZeldaSaveMusicStateToRam_Locked() {
 }
 
 void ZeldaEnableMsu(uint8 enable) {
-  /*g_msu_player.volume = 1.0f;
+#if 0
+  g_msu_player.volume = 1.0f;
   g_msu_player.enabled = enable;
-  /*if (enable & kMsuEnabled_Opuz) {
+  if (enable & kMsuEnabled_Opuz) {
     if (g_config.audio_freq != 48000)
       fprintf(stderr, "Warning: MSU Opuz requires: AudioFreq = 48000\n");
   } else if (enable) {
     if (g_config.audio_freq != 44100)
       fprintf(stderr, "Warning: MSU requires: AudioFreq = 44100\n");
-  }*/
+  }
+#endif
   
 
   float volscale = /*g_config.msuvolume*/ 100 * (1.0f / 255 / 100);
