@@ -116,6 +116,16 @@ both sides for every language set and diffs them; each area module also has
 ignored unit tests that check its own assets against a Python-built `.dat`
 (`ZELDA3_ROM`, `ZELDA3_ORACLE`, `ZELDA3_ORACLE_DAT`, `ZELDA3_ORACLE_DIR`).
 
+**Only three of the twelve accepted ROMs have ever been run through this.**
+Parity is proven for US, French and German, in every combination, because
+those are the ROMs available to the author. The other nine language releases
+in the manifest -- French (Canada), English (Europe), and the Spanish, Polish,
+Portuguese, Dutch, Swedish and two Redux fan translations -- are ported and
+their hashes are declared, but no test has ever fed one in. `pt` is the
+riskiest of them: it is the one language whose font takes a different code
+path (a tile remap and a third width byte), and that path has never executed.
+If you have one of those ROMs, run `./check.sh` with it and say what happened.
+
 The ROM-free tests cover the harness only: the verifier's rules, the module's
 conformance, the ABI's error paths, and the page loading in a real browser. Do
 not read a green public CI run as evidence that an asset is produced
