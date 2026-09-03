@@ -1,0 +1,203 @@
+name: wasm asset extractor
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Pages refuses concurrent deployments, and a tag push racing a main push is
+# exactly how that happens. Queue rather than cancel: a half-finished deploy is
+# worse than a slow one.
+concurrency:
+  group: pages-${{ github.repository }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: tables/wasm
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      page_changed: ${{ steps.page_changed.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # The page's sources are independent of the module, so a change to them
+      # should reach users without waiting for a tag.
+      - id: page_changed
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1 &&
+             git diff --name-only HEAD^ HEAD | grep -qE '^tables/wasm/(page/|build-page\.sh|verify\.mjs|extract\.mjs|manifest\.mjs)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Rust (pinned for reproducible output)
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --target wasm32-unknown-unknown
+          rustup default 1.90.0
+          rustc --version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # --lib only: the native CLI is a development harness, not a release
+      # artifact. --locked so the dependency set cannot drift under us.
+      - name: Build module
+        run: cargo build --release --locked --target wasm32-unknown-unknown --lib
+
+      - name: Verifier test suite
+        run: node test.mjs
+
+      # The gate. A module that fails this never reaches a release, so a
+      # consumer that trusts our releases and a consumer that re-verifies
+      # independently reach the same answer.
+      - name: Verify conformance
+        run: node verify.mjs target/wasm32-unknown-unknown/release/zelda3_restool.wasm
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p dist
+          cp target/wasm32-unknown-unknown/release/zelda3_restool.wasm dist/
+          node manifest.mjs dist/zelda3_restool.wasm dist/manifest.json
+          sha256sum dist/zelda3_restool.wasm | tee dist/SHA256SUMS
+
+      # Independent re-verification of exactly the bytes being published,
+      # rather than the bytes we happened to build.
+      - name: Re-verify staged artifact
+        run: node verify.mjs dist/zelda3_restool.wasm
+
+      # Release assets are NOT CORS-fetchable, so they cannot be the channel a
+      # web tool reads (docs/spec/distribution.md). The same bytes therefore go
+      # to a long-lived `dist` branch, which raw.githubusercontent.com and
+      # jsDelivr both serve with access-control-allow-origin: *. Versions
+      # accumulate there under their tag, and `latest/` tracks the newest.
+      - name: Publish artifacts to the dist branch
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          work="$(mktemp -d)"
+          git clone --depth 1 --branch dist "${{ github.server_url }}/${{ github.repository }}" "$work" 2>/dev/null || {
+            git clone --depth 1 "${{ github.server_url }}/${{ github.repository }}" "$work"
+            git -C "$work" checkout --orphan dist
+            git -C "$work" rm -rqf .
+          }
+          mkdir -p "$work/$tag" "$work/latest"
+          cp dist/zelda3_restool.wasm dist/manifest.json dist/SHA256SUMS "$work/$tag/"
+          cp dist/zelda3_restool.wasm dist/manifest.json dist/SHA256SUMS "$work/latest/"
+          cd "$work"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ github.token }}" | base64 -w0)" \
+            -c user.name="github-actions[bot]" commit -m "Publish $tag" || exit 0
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ github.token }}" | base64 -w0)" \
+            push origin dist
+
+      # The Pages site is a consumer of the same verify.mjs and extract.mjs the
+      # web builder uses, built from the same commit as the module it serves.
+      # Publishing them together is what stops the page and the module drifting.
+      - name: Build Pages site
+        env:
+          # On a tag the page reads the published, tag-pinned manifest, so it
+          # exercises the real distribution path rather than a same-origin
+          # shortcut. Elsewhere it reads the copy built beside it.
+          MANIFEST_URL: ${{ github.event_name == 'pull_request' && '' || format('https://raw.githubusercontent.com/{0}/dist/latest/manifest.json', github.repository) }}
+        run: ./build-page.sh
+
+      # Loads the built page in a real browser. Node-only constructs in a
+      # browser-loaded module (a shebang, a bare `process.argv`) throw at import
+      # time and leave a page that silently does nothing -- invisible to every
+      # other check here. Needs no ROM: it exercises load and verification only.
+      - name: Smoke-test the page in a browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          (cd site && python3 -m http.server 8731 &)
+          for i in $(seq 1 20); do curl -sf http://localhost:8731/index.html >/dev/null && break; sleep 0.5; done
+          node test-page.mjs
+          # The page reads its manifest from the dist branch, which only moves
+          # on a tag, so between an ABI change and the next release the
+          # published module is older than the page and correctly fails
+          # verification. The page must fall back to the module built beside
+          # it rather than dying. This has broken the site twice.
+          node test-page-stale.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zelda3-wasm-extractor
+          path: tables/wasm/dist/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: tables/wasm/site
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            tables/wasm/dist/zelda3_restool.wasm
+            tables/wasm/dist/manifest.json
+            tables/wasm/dist/SHA256SUMS
+
+  # Publishes the Pages site. This is not only the manual conversion UI: it is
+  # the machine-readable distribution endpoint, because GitHub release assets
+  # are NOT CORS-fetchable from a browser and a consuming web tool therefore
+  # cannot read them. See docs/spec/distribution.md for the measurements.
+  #
+  # Deploys from master only. The github-pages environment restricts deployments
+  # to the default branch, so a tag cannot deploy even if we asked it to.
+  #
+  # That is fine, because the page reads its extractor from the dist branch at
+  # load time rather than carrying it. A release therefore reaches users the
+  # moment the dist branch updates, with no redeploy, and the page itself is
+  # redeployed only when its own sources change.
+  pages:
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  # Byte-for-byte parity against the Python reference. Requires a copyrighted
+  # ROM, so it cannot run on a public runner; maintainers run it locally via
+  # ./check.sh and it runs here only where a ROM is provisioned.
+  parity:
+    runs-on: ubuntu-latest
+    if: vars.HAVE_ZELDA3_ROM == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Restore ROM
+        env:
+          ZELDA3_ROM_BASE64: ${{ secrets.ZELDA3_ROM_BASE64 }}
+        run: echo "$ZELDA3_ROM_BASE64" | base64 -d > /tmp/zelda3.sfc
+      - run: cargo build --release --locked --target wasm32-unknown-unknown --lib
+      - name: Compare wasm output against the Python reference
+        run: |
+          ( cd .. && python3 restool.py --rom /tmp/zelda3.sfc --extract-from-rom )
+          node extract.mjs target/wasm32-unknown-unknown/release/zelda3_restool.wasm /tmp/wasm.dat /tmp/zelda3.sfc
+          cmp ../zelda3_assets.dat /tmp/wasm.dat
