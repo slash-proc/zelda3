@@ -58,14 +58,14 @@ static void spc_write(Spc* spc, uint16_t adr, uint8_t val) {
 }
 
 Spc* spc_init(Apu* apu) {
-  /*Spc* spc = &g_spc;//(Spc * )malloc(sizeof(Spc));
+  // Statically allocated: the target has no allocator.
+  static Spc g_spc;
+  Spc* spc = &g_spc;
   spc->apu = apu;
-  return spc;*/
-  return NULL;
+  return spc;
 }
 
 void spc_free(Spc* spc) {
-  free(spc);
 }
 
 void spc_reset(Spc* spc) {

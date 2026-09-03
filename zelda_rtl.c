@@ -265,7 +265,7 @@ static void ZeldaRunGameLoop() {
 
 void ZeldaInitialize() {
   g_zenv.dma = dma_init(NULL);
-  g_zenv.ppu = ppu_init(NULL);
+  g_zenv.ppu = ppu_init();
   g_zenv.ram = g_ram;
   g_zenv.sram = g_sram; //(uint8*)calloc(8192, 1);
   g_zenv.vram = g_zenv.ppu->vram;
@@ -341,18 +341,23 @@ static void Startup_InitializeMemory() {  // 8087c0
   flag_update_cgram_in_nmi++;
 }
 
-/*
+#ifndef HEADLESS
 void ByteArray_AppendVl(ByteArray *arr, uint32 v) {
   for (; v >= 255; v -= 255)
     ByteArray_AppendByte(arr, 255);
   ByteArray_AppendByte(arr, v);
-}*/
+}
+#endif  // HEADLESS
 
+#ifndef HEADLESS
 void saveFunc(void *ctx_in, void *data, size_t data_size) {
-  // TODO Program extflash !!! --> extern function ?
-  //ByteArray_AppendData((ByteArray *)ctx_in, data, data_size);
+  ByteArray_AppendData((ByteArray *)ctx_in, data, data_size);
+}
+#else
+void saveFunc(void *ctx_in, void *data, size_t data_size) {
   writeSaveStateImpl(data, data_size);
 }
+#endif  // HEADLESS
 
 
 typedef struct LoadFuncState {
@@ -419,7 +424,7 @@ static void SaveSnesState(SaveLoadFunc *func, void *ctx) {
   ZeldaApuUnlock();
 }
 
-/*
+#ifndef HEADLESS
 typedef struct StateRecorder {
   uint16 last_inputs;
   uint32 frames_since_last;
@@ -694,16 +699,17 @@ int InputStateReadFromFile() {
   return cur_keys;
 }
 #endif
-*/
+#endif  // HEADLESS
 
 
+#ifdef HEADLESS
 void StateRecorder_Load(uint8* slot_addr) {
   size_t size = *((size_t*) slot_addr);
   // Sanity-check savestate
   size_t expectedSavestateSize = InternalSaveLoadSize();
   size_t actualSavestateSize = *((size_t*)slot_addr);
   if (expectedSavestateSize != actualSavestateSize) {
-		printf("StateRecorder_Load: Invalid state save size, expected=0x%08x actual=0x%08x\n", expectedSavestateSize, actualSavestateSize);
+		printf("StateRecorder_Load: Invalid state save size, expected=0x%08zx actual=0x%08zx\n", expectedSavestateSize, actualSavestateSize);
 		return;
   }
   LoadFuncState state = { slot_addr + sizeof(size_t), slot_addr + sizeof(size_t) + size };
@@ -717,6 +723,7 @@ void StateRecorder_Save(uint8* slot_addr) {
   SaveSnesState(&saveFunc, slot_addr);
   writeSaveStateFinalizeImpl();
 }
+#endif  // HEADLESS
 
 bool ZeldaRunFrame(int inputs) {
 
@@ -825,6 +832,30 @@ static const char *const kReferenceSaves[] = {
   "Chapter 13 - After Ganon's Tower.sav",
 };
 
+#ifndef HEADLESS
+void SaveLoadSlot(int cmd, int which) {
+  char name[128];
+  if (which & 256) {
+    if (cmd == kSaveLoad_Save)
+      return;
+    sprintf(name, "saves/ref/%s", kReferenceSaves[which - 256]);
+  } else {
+    sprintf(name, "saves/save%d.sav", which);
+  }
+  FILE *f = fopen(name, cmd != kSaveLoad_Save ? "rb" : "wb");
+  if (f) {
+    printf("*** %s slot %d\n",
+      cmd == kSaveLoad_Save ? "Saving" : cmd == kSaveLoad_Load ? "Loading" : "Replaying", which);
+
+    if (cmd != kSaveLoad_Save)
+      StateRecorder_Load(&state_recorder, f, cmd == kSaveLoad_Replay);
+    else
+      StateRecorder_Save(&state_recorder, f);
+
+    fclose(f);
+  }
+}
+#else
 void SaveLoadSlot(int cmd, uint8* slot) {
   /*char name[128];
   if (which & 256) {
@@ -848,8 +879,9 @@ void SaveLoadSlot(int cmd, uint8* slot) {
     fclose(f);
   }*/
 }
+#endif  // HEADLESS
 
-/*
+#ifndef HEADLESS
 typedef struct StateRecoderMultiPatch {
   uint32 count;
   uint32 addr;
@@ -902,8 +934,30 @@ void PatchCommand(char c) {
   }
   StateRecoderMultiPatch_Commit(&mp);
 }
-*/
+#endif  // HEADLESS
 
+#ifndef HEADLESS
+void ZeldaReadSram() {
+  FILE *f = fopen("saves/sram.dat", "rb");
+  if (f) {
+    if (fread(g_zenv.sram, 1, 8192, f) != 8192)
+      fprintf(stderr, "Error reading saves/sram.dat\n");
+    fclose(f);
+    EmuSynchronizeWholeState();
+  }
+}
+
+void ZeldaWriteSram() {
+  rename("saves/sram.dat", "saves/sram.bak");
+  FILE *f = fopen("saves/sram.dat", "wb");
+  if (f) {
+    fwrite(g_zenv.sram, 1, 8192, f);
+    fclose(f);
+  } else {
+    fprintf(stderr, "Unable to write saves/sram.dat\n");
+  }
+}
+#else
 void ZeldaReadSram() {
   //FILE *f = fopen("saves/sram.dat", "rb");
   //if (f) {
@@ -928,3 +982,4 @@ void ZeldaWriteSram() {
   //  fprintf(stderr, "Unable to write saves/sram.dat\n");
   //}
 }
+#endif  // HEADLESS

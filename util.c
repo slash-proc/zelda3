@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 char *NextDelim(char **s, int sep) {
   char *r = *s;
@@ -38,7 +39,7 @@ const char *StringStartsWithNoCase(const char *a, const char *b) {
   }
 }
 
-/*
+#ifndef HEADLESS
 uint8 *ReadWholeFile(const char *name, size_t *length) {
   FILE *f = fopen(name, "rb");
   if (f == NULL)
@@ -56,7 +57,7 @@ uint8 *ReadWholeFile(const char *name, size_t *length) {
   if (length) *length = size;
   return buffer;
 }
-*/
+#endif
 
 char *NextLineStripComments(char **s) {
   char *p = *s;
@@ -96,7 +97,7 @@ char *NextPossiblyQuotedString(char **s) {
   return r;
 }
 
-/*
+#ifndef HEADLESS
 char *ReplaceFilenameWithNewPath(const char *old_path, const char *new_path) {
   size_t olen = strlen(old_path);
   size_t nlen = strlen(new_path) + 1;
@@ -107,7 +108,7 @@ char *ReplaceFilenameWithNewPath(const char *old_path, const char *new_path) {
   memcpy(result + olen, new_path, nlen);
   return result;
 }
-*/
+#endif
 
 char *SplitKeyValue(char *p) {
   char *equals = strchr(p, '=');
@@ -148,7 +149,7 @@ char *StrFmt(const char *fmt, ...) {
   return strdup(buf);
 }
 
-/*
+#ifndef HEADLESS
 void ByteArray_Resize(ByteArray *arr, size_t new_size) {
   arr->size = new_size;
   if (new_size > arr->capacity) {
@@ -175,7 +176,7 @@ void ByteArray_AppendByte(ByteArray *arr, uint8 v) {
   ByteArray_Resize(arr, arr->size + 1);
   arr->data[arr->size - 1] = v;
 }
-*/
+#endif
 
 // Automatically selects between 16 or 32 bit indexes. Can hold up to 8192 elements in 16-bit mode.
 MemBlk FindIndexInMemblk(MemBlk data, size_t i) {

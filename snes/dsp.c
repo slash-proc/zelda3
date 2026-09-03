@@ -69,7 +69,6 @@ Dsp* dsp_init(uint8_t *apu_ram) {
 }
 
 void dsp_free(Dsp* dsp) {
-  free(dsp);
 }
 
 void dsp_reset(Dsp* dsp) {

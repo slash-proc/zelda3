@@ -168,7 +168,8 @@ static GamepadMapEnt *joymap_ents;
 static int joymap_size;
 static bool has_joypad_controls;
 
-/*
+// Desktop-only: config file parsing (uses realloc/strdup and SDL key names).
+#ifndef HEADLESS
 static int CountBits32(uint32 n) {
   int count = 0;
   for (; n != 0; count++)
@@ -195,7 +196,7 @@ static void GamepadMap_Add(int button, uint32 modifiers, uint16 cmd) {
   ent->next = *p;
   *p = i + 1;
 }
-*/
+#endif
 
 int FindCmdForGamepadButton(int button, uint32 modifiers) {
   GamepadMapEnt *ent;
@@ -206,7 +207,7 @@ int FindCmdForGamepadButton(int button, uint32 modifiers) {
   }
   return 0;
 }
-/*
+#ifndef HEADLESS
 static int ParseGamepadButtonName(const char **value) {
   const char *s = *value;
   // Longest substring first
@@ -543,4 +544,4 @@ void ParseConfigFile(const char *filename) {
   }
   RegisterDefaultKeys();
 }
-*/
+#endif

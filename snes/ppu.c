@@ -35,7 +35,7 @@ enum {
 
 static Ppu g_ppu;
 
-Ppu* ppu_init() {
+Ppu* ppu_init(void) {
   // Static allocation
   Ppu* ppu = &g_ppu;  //(Ppu * )malloc(sizeof(Ppu));
   ppu->extraLeftRight = kPpuExtraLeftRight;

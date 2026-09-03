@@ -65,7 +65,12 @@ enum {
   kSaveLoad_Replay = 2,
 };
 
+#ifndef HEADLESS
+// Desktop: `which` is a save slot index, or 256 + index of a reference save.
+void SaveLoadSlot(int cmd, int which);
+#else
 void SaveLoadSlot(int cmd, uint8* slot);
+#endif
 void ZeldaWriteSram();
 void ZeldaReadSram();
 
