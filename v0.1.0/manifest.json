@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "spec": 1,
+  "project": "zelda3",
+  "title": "The Legend of Zelda: A Link to the Past",
+  "shortTitle": "Zelda 3",
+  "source": {
+    "repo": "slash-proc/zelda3",
+    "commit": "8e49aff2e3babd862d6b6fd7f17d8edcaa669eb3",
+    "ref": "v0.1.0",
+    "workflow": "https://github.com/slash-proc/zelda3/actions/runs/33787438848"
+  },
+  "docs": {
+    "readme": "tables/wasm/README.md",
+    "spec": "docs/spec/"
+  },
+  "tools": [
+    {
+      "id": "zelda3-assets",
+      "kind": "asset-extractor",
+      "title": "Zelda 3 asset conversion",
+      "readme": "tables/wasm/PROJECT.md",
+      "module": {
+        "file": "zelda3_restool.wasm",
+        "bytes": 255122,
+        "sha256": "d194bec600bcef0cae8c1303cb273085b1321697c3565dbe869b80e46d3d29af",
+        "url": "zelda3_restool.wasm",
+        "releaseUrl": "https://github.com/slash-proc/zelda3/releases/download/v0.1.0/zelda3_restool.wasm"
+      },
+      "abi": {
+        "version": 1,
+        "imports": [],
+        "exports": [
+          {
+            "name": "memory",
+            "kind": "memory"
+          },
+          {
+            "name": "abi_version",
+            "kind": "func"
+          },
+          {
+            "name": "alloc",
+            "kind": "func"
+          },
+          {
+            "name": "input_clear",
+            "kind": "func"
+          },
+          {
+            "name": "input_add",
+            "kind": "func"
+          },
+          {
+            "name": "run",
+            "kind": "func"
+          },
+          {
+            "name": "run_begin",
+            "kind": "func"
+          },
+          {
+            "name": "run_step",
+            "kind": "func"
+          },
+          {
+            "name": "output_count",
+            "kind": "func"
+          },
+          {
+            "name": "output_name_ptr",
+            "kind": "func"
+          },
+          {
+            "name": "output_name_len",
+            "kind": "func"
+          },
+          {
+            "name": "output_ptr",
+            "kind": "func"
+          },
+          {
+            "name": "output_len",
+            "kind": "func"
+          },
+          {
+            "name": "error_ptr",
+            "kind": "func"
+          },
+          {
+            "name": "error_len",
+            "kind": "func"
+          },
+          {
+            "name": "warnings_ptr",
+            "kind": "func"
+          },
+          {
+            "name": "warnings_len",
+            "kind": "func"
+          },
+          {
+            "name": "stage_count",
+            "kind": "func"
+          },
+          {
+            "name": "stage_index",
+            "kind": "func"
+          },
+          {
+            "name": "stage_name_ptr",
+            "kind": "func"
+          },
+          {
+            "name": "stage_name_len",
+            "kind": "func"
+          },
+          {
+            "name": "__data_end",
+            "kind": "global"
+          },
+          {
+            "name": "__heap_base",
+            "kind": "global"
+          }
+        ],
+        "memory": [
+          {
+            "min": 17,
+            "max": 1024,
+            "shared": false
+          }
+        ]
+      },
+      "policy": {
+        "allowImports": false,
+        "allowStartSection": false,
+        "maxMemoryPages": 1024
+      },
+      "inputs": [
+        {
+          "id": "base",
+          "required": true,
+          "repeatable": false,
+          "label": {
+            "en": "Base ROM",
+            "fr": "ROM de base",
+            "de": "Basis-ROM"
+          },
+          "description": {
+            "en": "US (NTSC) cartridge dump.",
+            "fr": "Copie de la cartouche US (NTSC).",
+            "de": "Kopie der US Fassung (NTSC)."
+          },
+          "extensions": [
+            ".sfc",
+            ".smc"
+          ],
+          "maxBytes": 8388608,
+          "variants": [
+            {
+              "id": "us",
+              "language": "us",
+              "label": {
+                "en": "The Legend of Zelda: A Link to the Past (USA, NTSC)",
+                "fr": "The Legend of Zelda: A Link to the Past (USA, NTSC)",
+                "de": "The Legend of Zelda: A Link to the Past (USA, NTSC)"
+              },
+              "sha1": "6D4F10A8B10E10DBE624CB23CF03B88BB8252973",
+              "bytes": 1048576
+            }
+          ],
+          "acceptsModified": false
+        },
+        {
+          "id": "language",
+          "required": false,
+          "repeatable": true,
+          "label": {
+            "en": "Additional Language",
+            "fr": "Langue supplémentaire",
+            "de": "Zusätzliche Sprache"
+          },
+          "description": {
+            "en": "Supplies that language's dialogue and font.",
+            "fr": "Fournit les dialogues et la police de cette langue.",
+            "de": "Liefert Dialoge und Schrift dieser Sprache."
+          },
+          "extensions": [
+            ".sfc",
+            ".smc"
+          ],
+          "maxBytes": 8388608,
+          "variants": [
+            {
+              "id": "de",
+              "language": "de",
+              "label": {
+                "en": "German",
+                "fr": "Allemand",
+                "de": "Deutsch"
+              },
+              "sha1": "2E62494967FB0AFDF5DA1635607F9641DF7C6559"
+            },
+            {
+              "id": "fr",
+              "language": "fr",
+              "label": {
+                "en": "French",
+                "fr": "Français",
+                "de": "Französisch"
+              },
+              "sha1": "229364A1B92A05167CD38609B1AA98F7041987CC"
+            },
+            {
+              "id": "fr-c",
+              "language": "fr-c",
+              "label": {
+                "en": "French (Canada)",
+                "fr": "Français (Canada)",
+                "de": "Französisch (Kanada)"
+              },
+              "sha1": "C1C6C7F76FFF936C534FF11F87A54162FC0AA100"
+            },
+            {
+              "id": "en",
+              "language": "en",
+              "label": {
+                "en": "English (Europe)",
+                "fr": "Anglais (Europe)",
+                "de": "Englisch (Europa)"
+              },
+              "sha1": "7C073A222569B9B8E8CA5FCB5DFEC3B5E31DA895"
+            },
+            {
+              "id": "es",
+              "language": "es",
+              "label": {
+                "en": "Spanish (fan)",
+                "fr": "Espagnol (fan)",
+                "de": "Spanisch (Fan)"
+              },
+              "url": "https://www.romhacking.net/translations/2195/",
+              "sha1": "461FCBD700D1332009C0E85A7A136E2A8E4B111E"
+            },
+            {
+              "id": "pl",
+              "language": "pl",
+              "label": {
+                "en": "Polish (fan)",
+                "fr": "Polonais (fan)",
+                "de": "Polnisch (Fan)"
+              },
+              "url": "https://www.romhacking.net/translations/5760/",
+              "sha1": "3C4D605EEFDA1D76F101965138F238476655B11D"
+            },
+            {
+              "id": "pt",
+              "language": "pt",
+              "label": {
+                "en": "Portuguese (fan)",
+                "fr": "Portugais (fan)",
+                "de": "Portugiesisch (Fan)"
+              },
+              "url": "https://www.romhacking.net/translations/6530/",
+              "sha1": "D0D09ED41F9C373FE6AFDCCAFBF0DA8C88D3D90D"
+            },
+            {
+              "id": "redux-translation",
+              "language": "redux",
+              "label": {
+                "en": "English (Redux)",
+                "fr": "Anglais (Redux)",
+                "de": "Englisch (Redux)"
+              },
+              "url": "https://www.romhacking.net/translations/6657/",
+              "sha1": "B2A07A59E64C498BC1B2F28728F9BF4014C8D582"
+            },
+            {
+              "id": "redux-hack",
+              "language": "redux",
+              "label": {
+                "en": "English (Redux, hack)",
+                "fr": "Anglais (Redux, hack)",
+                "de": "Englisch (Redux, Hack)"
+              },
+              "url": "https://www.romhacking.net/hacks/2594/",
+              "sha1": "9325C22EB0A2A1F0017157C8B620BC3A605CEDE1"
+            },
+            {
+              "id": "nl",
+              "language": "nl",
+              "label": {
+                "en": "Dutch (fan)",
+                "fr": "Néerlandais (fan)",
+                "de": "Niederländisch (Fan)"
+              },
+              "url": "https://www.romhacking.net/translations/1124/",
+              "sha1": "FA8ADFDBA2697C9A54D583A1284A22AC764C7637"
+            },
+            {
+              "id": "sv",
+              "language": "sv",
+              "label": {
+                "en": "Swedish (fan)",
+                "fr": "Suédois (fan)",
+                "de": "Schwedisch (Fan)"
+              },
+              "url": "https://www.romhacking.net/translations/982/",
+              "sha1": "43CD3438469B2C3FE879EA2F410B3EF3CB3F1CA4"
+            }
+          ],
+          "acceptsModified": false
+        }
+      ],
+      "outputs": [
+        {
+          "filename": "zelda3_assets.dat",
+          "label": {
+            "en": "Asset pack",
+            "fr": "Pack de ressources",
+            "de": "Ressourcenpaket"
+          },
+          "description": {
+            "en": "Asset pack consumed by the Zelda 3 port.",
+            "fr": "Le pack de ressources dont le portage de Zelda 3 a besoin.",
+            "de": "Das Asset-Paket, das der Port von Zelda 3 benötigt."
+          }
+        }
+      ],
+      "reference": {
+        "inputs": [
+          {
+            "name": "Legend of Zelda, The - A Link to the Past (U) [!].smc",
+            "sha1": "6D4F10A8B10E10DBE624CB23CF03B88BB8252973",
+            "bytes": 1048576
+          }
+        ],
+        "flags": 0,
+        "outputs": [
+          {
+            "name": "zelda3_assets.dat",
+            "bytes": 683888,
+            "sha256": "0fe2e4bd75d70f06fb9a74cd3a9cb336c838149b831b56e8792114a89292c793"
+          }
+        ]
+      },
+      "limits": {
+        "maxOutputBytes": 67108864,
+        "typicalRuntimeMs": 1000
+      },
+      "flags": {
+        "noHashCheck": 1,
+        "noIncludeRom": 2
+      }
+    }
+  ]
+}
