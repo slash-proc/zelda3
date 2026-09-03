@@ -121,6 +121,14 @@ no cancel flag in this ABI and there cannot be one.
 Stage names are shown to users. They should be short, human-readable, and
 distinct.
 
+## Not to be confused with a firmware ABI
+
+Everything above is the *extractor* ABI: the contract between a host and a wasm
+module. A target device may have an ABI of its own, which a compiled artifact
+declares and a consumer checks before installing. That is a different number
+with a different meaning, and it lives in
+[`distribution.md`](distribution.md#firmware-abi-requirements).
+
 ## Versioning
 
 `abi_version()` returns the spec version the module implements. A host that

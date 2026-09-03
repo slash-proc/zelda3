@@ -33,6 +33,59 @@ if (!result.ok) {
 const REFERENCE = "reference.json";
 const reference = existsSync(REFERENCE) ? JSON.parse(readFileSync(REFERENCE, "utf8")) : null;
 
+// Firmware ABI requirements are read back out of the binary, never written by
+// hand -- the same discipline as the module's sha256 and as `reference` above.
+// A GWHB file starts with "GWHB", a u16 header version, a u16 header length,
+// and then gwhb_meta_t, whose first two u32 fields are required_abi_version
+// and required_abi_min_size (Core/Inc/retro-go/gwhb.h in the firmware repo).
+// A consumer compares those two numbers against the firmware it is installing
+// onto; docs/spec/distribution.md states the predicate.
+function gwhbRequires(path) {
+  if (!existsSync(path)) return null;
+  const buf = readFileSync(path);
+  if (buf.length < 16 || buf.toString("latin1", 0, 4) !== "GWHB") {
+    throw new Error(`${path} is not a GWHB file: bad magic`);
+  }
+  // header_length 0 is a legacy pre-meta binary, which carries no ABI fields
+  // at all. Refuse rather than publish two zeroes that would read as "runs on
+  // any firmware".
+  if (buf.readUInt16LE(6) === 0) {
+    throw new Error(`${path} is a legacy GWHB binary with no meta; it declares no firmware ABI`);
+  }
+  return {
+    firmwareAbiVersion: buf.readUInt32LE(8),
+    firmwareAbiMinSize: buf.readUInt32LE(12),
+  };
+}
+
+// One entry of a target's `artifacts[]`. Everything derived from bytes --
+// size, hash, firmware ABI requirement -- is derived here or left null. A null
+// hash means "not published yet", and a consumer must refuse to install such
+// an artifact rather than fetch it unchecked.
+function artifact(a) {
+  const path = a.path ?? a.filename;
+  const published = existsSync(path);
+  const bytes = published ? readFileSync(path) : null;
+  const entry = {
+    filename: a.filename,
+    kind: a.kind,
+    format: a.format,
+    label: a.label,
+    description: a.description,
+    destination: a.destination,
+    bytes: bytes ? bytes.length : null,
+    sha256: bytes ? createHash("sha256").update(bytes).digest("hex") : null,
+    url: published ? a.url ?? a.filename : null,
+    published,
+  };
+  if (a.pairsWith) entry.pairsWith = a.pairsWith;
+  // Only a GWHB binary has a firmware ABI requirement. A plain sibling blob
+  // and an SDL executable have none, and inventing one for them would invite
+  // a consumer to compare numbers that mean nothing.
+  if (a.format === "gwhb") entry.requires = published ? gwhbRequires(path) : null;
+  return entry;
+}
+
 // Localised strings are {en, fr, de} objects. `en` is the base and is always
 // present; a consumer falls back to it for any locale it has no entry for.
 const loc = (en, fr, de) => ({ en, fr, de });
@@ -263,6 +316,10 @@ const manifest = {
             "Le pack de ressources dont le portage de Zelda 3 a besoin.",
             "Das Asset-Paket, das der Port von Zelda 3 benötigt.",
           ),
+          // Where the file goes on the target device. Authoritative: a
+          // consumer copies it here verbatim and never derives a path from
+          // the file's name, kind or format. See docs/spec/distribution.md.
+          destination: "/homebrews/",
         },
       ],
 
@@ -281,6 +338,87 @@ const manifest = {
       },
 
       flags: { noHashCheck: 1, noIncludeRom: 2 },
+    },
+  ],
+
+  // The platforms this game can be built for. `tools` says how to make the
+  // files that come from the user's own ROM; `targets` says what else a
+  // working install needs and, for every file, exactly where it goes.
+  //
+  // Every path here is authoritative. A consumer copies files to the stated
+  // `destination` and must not infer one from a file's kind, format or name,
+  // because the conventions are not consistent even inside one firmware
+  // project (docs/spec/distribution.md says why).
+  targets: [
+    {
+      id: "gnw-retro-go",
+      platform: "game-and-watch",
+      label: loc(
+        "Game and Watch, retro-go",
+        "Game and Watch, retro-go",
+        "Game and Watch, retro-go",
+      ),
+      description: loc(
+        "Installs on the SD card of a Game and Watch running retro-go.",
+        "S'installe sur la carte SD d'une Game and Watch avec retro-go.",
+        "Wird auf der SD-Karte einer Game and Watch mit retro-go abgelegt.",
+      ),
+
+      // Not derived from the user's ROM: these are compiled by this project
+      // and published alongside the manifest.
+      //
+      // Nothing is published yet, so every artifact below carries
+      // `sha256: null` and `published: false`. The generator fills in bytes,
+      // hash, url and -- for the GWHB binary -- the firmware ABI requirement
+      // read out of the packed gwhb_meta_t, on the first build where the file
+      // is actually present. The manifest never states a hash nobody
+      // computed, the same rule that governs `reference` above.
+      artifacts: [
+        artifact({
+          filename: "zelda3.bin",
+          kind: "device-binary",
+          format: "gwhb",
+          destination: "/homebrews/",
+          label: loc("Zelda 3 homebrew", "Homebrew Zelda 3", "Zelda 3 Homebrew"),
+          description: loc(
+            "The game itself, as a homebrew binary the launcher can start.",
+            "Le jeu lui-même, sous forme de binaire homebrew que le lanceur démarre.",
+            "Das Spiel selbst als Homebrew-Datei, die der Starter ausführen kann.",
+          ),
+        }),
+        artifact({
+          filename: "zelda3.ro",
+          kind: "device-asset",
+          format: "raw",
+          destination: "/homebrews/",
+          // Read-only data too large for the binary's RAM segment. It is not
+          // optional and not separately versioned: it belongs to exactly the
+          // zelda3.bin it was built with, so the two are installed together.
+          pairsWith: "zelda3.bin",
+          label: loc("Read-only data", "Données en lecture seule", "Schreibgeschützte Daten"),
+          description: loc(
+            "Code and data the homebrew reads from the card at run time.",
+            "Code et données que le homebrew lit sur la carte pendant le jeu.",
+            "Code und Daten, die das Homebrew während des Spiels von der Karte liest.",
+          ),
+        }),
+      ],
+
+      // Everything a working install needs, artifacts and converter outputs
+      // together, so a consumer does not have to know that this game has an
+      // asset pack at all. Each entry names one file and repeats its
+      // destination; `from` says which part of the manifest produced it.
+      install: [
+        { from: "artifact", filename: "zelda3.bin", destination: "/homebrews/", required: true },
+        { from: "artifact", filename: "zelda3.ro", destination: "/homebrews/", required: true },
+        {
+          from: "tool",
+          tool: "zelda3-assets",
+          filename: "zelda3_assets.dat",
+          destination: "/homebrews/",
+          required: true,
+        },
+      ],
     },
   ],
 };
