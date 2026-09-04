@@ -204,9 +204,9 @@ const manifest = {
             "Zusätzliche Sprache",
           ),
           description: loc(
-            "Supplies that language's dialogue and font.",
-            "Fournit les dialogues et la police de cette langue.",
-            "Liefert Dialoge und Schrift dieser Sprache.",
+            "Add languages from translated ROMs",
+            "Ajoutez des langues à partir de ROMs traduites",
+            "Sprachen aus übersetzten ROMs hinzufügen",
           ),
           extensions: [".sfc", ".smc"],
           maxBytes: 8 * 1024 * 1024,

@@ -55,7 +55,6 @@ const en = {
     optional: "optional",
     // Shown for a role the manifest marks repeatable, in place of its
     // description: what the user gets for adding another one.
-    addHint: "Each adds an in-game language.",
     addLanguage: "+ Add language",
     remove: "Remove",
     alreadyAdded: (name) => `${name} has already been added.`,
@@ -131,7 +130,6 @@ const fr = {
     choose: "Choisir un fichier",
     none: "Aucun fichier choisi",
     optional: "facultatif",
-    addHint: "Chacune ajoute une langue dans le jeu.",
     addLanguage: "+ Ajouter une langue",
     remove: "Retirer",
     alreadyAdded: (name) => `${name} a déjà été ajouté.`,
@@ -204,7 +202,6 @@ const de = {
     choose: "Datei auswählen",
     none: "Keine Datei ausgewählt",
     optional: "optional",
-    addHint: "Jedes ergibt eine Sprache im Spiel.",
     addLanguage: "+ Sprache hinzufügen",
     remove: "Entfernen",
     alreadyAdded: (name) => `${name} wurde schon hinzugefügt.`,

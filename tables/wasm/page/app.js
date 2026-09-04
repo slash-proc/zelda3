@@ -193,10 +193,11 @@ function renderLocalised() {
     if (roleLabel) roleLabel.textContent = localeText(role.label);
     const opt = box.querySelector(".role-optional");
     if (opt) opt.textContent = t().input.optional;
-    // A repeatable role explains itself in terms of what adding another file
-    // buys the user, which is the one thing the manifest cannot say for them.
+    // The manifest owns this copy. The page used to override it with its own
+    // addHint string, which meant a project could not change what its inputs
+    // say without a page release.
     const desc = box.querySelector(".role-desc");
-    if (desc) desc.textContent = t().input.addHint ?? localeText(role.description);
+    if (desc) desc.textContent = localeText(role.description);
     renderRoleHelp(role);
     renderRole(role);
   }
@@ -410,8 +411,8 @@ function renderRoleHelp(role) {
   }
 
   help.replaceChildren();
-  // A repeatable role already shows its one-line hint on the page, so
-  // restating the description here is the same fact twice.
+  // The description is already on the row for every role, repeatable or not,
+  // so restating it here would be the same fact twice.
   if (!role.repeatable) {
     const about = document.createElement("p");
     about.className = "help-line";
