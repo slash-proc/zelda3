@@ -6,9 +6,9 @@
   "shortTitle": "Zelda 3",
   "source": {
     "repo": "slash-proc/zelda3",
-    "commit": "5dac247dcaa2bf5476e49c57e74ed9c7b4ce4416",
+    "commit": "5a9726d3432dc21bc513846d4e1e938318065433",
     "ref": "v0.2.0",
-    "workflow": "https://github.com/slash-proc/zelda3/actions/runs/33908667980"
+    "workflow": "https://github.com/slash-proc/zelda3/actions/runs/33957162627"
   },
   "docs": {
     "readme": "tables/wasm/README.md",
